@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>neXai - Premium AI Chat System</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --bg: #05050b; 
+  --card: rgba(15, 15, 28, 0.85); 
+  --primary: #00ffcc; 
+  --primary-glow: #7b2ff7; 
+  --gold: #ffd700;
+  --text: #f5f5f5;
+  --text-dim: #9a9aa8; 
+  --glass-border: rgba(255, 255, 255, 0.06);
+  --sidebar-w: 280px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; height: 100dvh; font-family: 'Poppins', sans-serif; background-color: var(--bg); color: var(--text); overflow: hidden; }
+
+body {
+  display: flex;
+  background-image: radial-gradient(circle at 80% 20%, rgba(0, 255, 204, 0.08), transparent 40%),
+                    radial-gradient(circle at 20% 80%, rgba(123, 47, 247, 0.08), transparent 40%);
+}
+
+/* Premium Loading Splash Screen */
+#loading-screen {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: #05050b; z-index: 9999; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 20px; transition: opacity 0.5s ease, visibility 0.5s;
+}
+#loading-screen.fade-out { opacity: 0; visibility: hidden; }
+.loader-logo {
+  width: 80px; height: 80px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--primary-glow));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2rem; color: #0a0a14; font-weight: 800;
+  box-shadow: 0 0 30px rgba(0, 255, 204, 0.4);
+  animation: pulseGlow 2s infinite alternate;
+}
+.loader-spinner {
+  width: 40px; height: 40px;
+  border: 3px solid rgba(255, 255, 255, 0.05);
+  border-top-color: var(--primary);
+  border-radius: 50%; animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulseGlow { from { transform: scale(0.95); box-shadow: 0 0 20px rgba(0, 255, 204, 0.3); } to { transform: scale(1.05); box-shadow: 0 0 40px rgba(123, 47, 247, 0.5); } }
+
+/* Main Layout Wrapper */
+.app-container { display: flex; width: 100%; height: 100%; position: relative; }
+
+/* Sidebar Layout */
+.sidebar {
+  width: var(--sidebar-w); height: 100%; background: rgba(8, 8, 15, 0.95);
+  border-right: 1px solid var(--glass-border); display: flex; flex-direction: column;
+  z-index: 40; transition: transform 0.3s ease; backdrop-filter: blur(20px);
+}
+.sidebar-header { padding: 16px; border-bottom: 1px solid var(--glass-border); display: flex; flex-direction: column; gap: 12px; }
+.new-chat-btn {
+  width: 100%; padding: 12px; border-radius: 12px; border: 1px dashed var(--primary);
+  background: rgba(0, 255, 204, 0.05); color: var(--primary); font-weight: 500;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.2s;
+}
+.new-chat-btn:hover { background: rgba(0, 255, 204, 0.15); box-shadow: 0 0 12px rgba(0,255,204,0.2); }
+.history-list { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+.history-item {
+  padding: 12px; border-radius: 10px; background: rgba(255,255,255,0.02);
+  border: 1px solid transparent; cursor: pointer; display: flex; align-items: center;
+  justify-content: space-between; gap: 10px; font-size: 0.85rem; transition: 0.2s;
+}
+.history-item:hover, .history-item.active {
+  background: rgba(123, 47, 247, 0.1); border-color: rgba(123, 47, 247, 0.3);
+}
+.history-item .chat-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.history-item i.delete-session { color: var(--text-dim); transition: 0.2s; }
+.history-item i.delete-session:hover { color: #ff3366; }
+
+.sidebar-footer { padding: 16px; border-top: 1px solid var(--glass-border); display: flex; align-items: center; gap: 10px; font-size: 0.85rem; }
+.user-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--primary-glow); display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.8rem; }
+
+/* Main Chat Screen */
+.main-content { flex: 1; display: flex; flex-direction: column; height: 100%; position: relative; }
+
+/* Top Bar */
+.top-bar {
+  padding: 12px 16px; background: rgba(10, 10, 20, 0.6); backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--glass-border); display: flex; align-items: center; justify-content: space-between; z-index: 30;
+}
+.bot-profile { display: flex; align-items: center; gap: 12px; }
+.menu-toggle { font-size: 1.2rem; cursor: pointer; color: var(--text-dim); display: block; margin-right: 4px; }
+
+.avatar {
+  width: 40px; height: 40px; border-radius: 50%; 
+  background: linear-gradient(135deg, var(--primary), var(--primary-glow));
+  display: flex; align-items: center; justify-content: center; 
+  font-size: 1.1rem; color: #0a0a14; font-weight: 700;
+  box-shadow: 0 0 15px rgba(0, 255, 204, 0.3); 
+  border: 1px solid rgba(255,255,255,0.2);
+}
+.bot-status .name { font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; gap: 5px; }
+.bot-status .status { font-size: 0.75rem; color: #00ff88; display: flex; align-items: center; gap: 4px; }
+.top-actions { display: flex; gap: 16px; font-size: 1.1rem; color: var(--text-dim); position: relative; }
+.top-actions i { cursor: pointer; transition: 0.2s; }
+.top-actions i:hover { color: var(--primary); }
+
+/* Dropdown Menu Titik Tiga */
+.dropdown-menu {
+  position: absolute; top: 35px; right: 0; background: var(--card);
+  border: 1px solid var(--glass-border); border-radius: 12px; width: 180px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5); display: none; flex-direction: column;
+  overflow: hidden; z-index: 50; backdrop-filter: blur(15px);
+}
+.dropdown-menu.show { display: flex; }
+.dropdown-item {
+  padding: 12px 16px; font-size: 0.85rem; color: var(--text);
+  display: flex; align-items: center; gap: 10px; cursor: pointer; transition: 0.2s;
+}
+.dropdown-item:hover { background: rgba(255,255,255,0.05); color: var(--primary); }
+.dropdown-item.logout-item:hover { color: #ff3366; background: rgba(255, 51, 102, 0.05); }
+
+/* Chat Container Area */
+.chat-container { flex: 1; overflow-y: auto; padding: 20px 16px; display: flex; flex-direction: column; gap: 16px; }
+.message { display: flex; flex-direction: column; max-width: 85%; }
+.message.user { align-self: flex-end; }
+.message.ai { align-self: flex-start; width: 100%; max-width: 85%; }
+
+.bubble { padding: 12px 16px; border-radius: 18px; font-size: 0.9rem; line-height: 1.6; box-shadow: 0 4px 12px rgba(0,0,0,0.15); word-wrap: break-word; }
+.user .bubble { background: linear-gradient(135deg, #7b2ff7, #5216b3); color: #fff; border-bottom-right-radius: 4px; border: 1px solid rgba(255,255,255,0.05); }
+.ai .bubble { background: var(--card); border: 1px solid var(--glass-border); color: var(--text); border-bottom-left-radius: 4px; backdrop-filter: blur(10px); }
+.ai .bubble p { margin-bottom: 8px; }
+.ai .bubble p:last-child { margin-bottom: 0; }
+
+/* Typing Dots */
+.typing-dots { display: flex; gap: 4px; padding: 4px 0; }
+.typing-dots span { width: 8px; height: 8px; background: var(--text-dim); border-radius: 50%; animation: bounce 1.4s infinite ease-in-out both; }
+.typing-dots span:nth-child(1) { animation-delay: -0.32s; }
+.typing-dots span:nth-child(2) { animation-delay: -0.16s; }
+@keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+
+/* Input Layout Area */
+.input-bar { padding: 16px; background: rgba(10, 10, 20, 0.8); border-top: 1px solid var(--glass-border); display: flex; gap: 12px; align-items: center; backdrop-filter: blur(20px); }
+.input-bar input { flex: 1; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--glass-border); padding: 14px 18px; border-radius: 24px; color: var(--text); font-size: 0.95rem; outline: none; }
+.input-bar input:disabled { opacity: 0.5; cursor: not-allowed; }
+.send-btn { width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--primary-glow)); border: none; color: #0a0a14; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0, 255, 204, 0.2); }
+.send-btn:disabled { opacity: 0.5; cursor: not-allowed; background: #222; color: #555; box-shadow: none; }
+
+/* Modal System (Login / Register / Settings) */
+.modal-overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(3, 3, 6, 0.85);
+  backdrop-filter: blur(15px); z-index: 100; display: none; align-items: center; justify-content: center; padding: 20px;
+}
+.modal-overlay.active { display: flex; }
+.modal-box {
+  background: var(--card); border: 1px solid rgba(255, 255, 255, 0.1); width: 100%; max-width: 400px;
+  border-radius: 24px; padding: 28px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  position: relative; animation: modalFade 0.3s ease;
+}
+@keyframes modalFade { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.modal-title { font-size: 1.3rem; font-weight: 600; margin-bottom: 20px; color: #fff; display: flex; align-items: center; gap: 10px; }
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-size: 0.8rem; color: var(--text-dim); margin-bottom: 6px; font-weight: 500; }
+.form-group input {
+  width: 100%; padding: 12px 16px; background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border);
+  border-radius: 12px; color: #fff; font-size: 0.9rem; outline: none; transition: 0.2s;
+}
+.form-group input:focus { border-color: var(--primary); box-shadow: 0 0 8px rgba(0,255,204,0.15); }
+.modal-btn {
+  width: 100%; padding: 14px; border-radius: 12px; border: none; font-weight: 600; font-size: 0.95rem;
+  background: linear-gradient(135deg, var(--primary), var(--primary-glow)); color: #0a0a14; cursor: pointer; transition: 0.2s; margin-top: 10px;
+}
+.modal-btn:hover { box-shadow: 0 4px 15px rgba(0,255,204,0.3); transform: translateY(-1px); }
+.modal-switch { text-align: center; font-size: 0.8rem; color: var(--text-dim); margin-top: 16px; }
+.modal-switch span { color: var(--primary); cursor: pointer; font-weight: 500; }
+.close-modal { position: absolute; top: 20px; right: 20px; font-size: 1.2rem; color: var(--text-dim); cursor: pointer; }
+.close-modal:hover { color: #fff; }
+
+.setting-toggle {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:12px 14px;
+  border-radius:14px;
+  background:rgba(255,255,255,0.03);
+  border:1px solid var(--glass-border);
+  margin-bottom:16px;
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 52px;
+  height: 28px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #333;
+  transition: .3s;
+  border-radius: 30px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 20px;
+  width: 20px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  transition: .3s;
+  border-radius: 50%;
+}
+
+.switch input:checked + .slider {
+  background: linear-gradient(135deg, var(--primary), var(--primary-glow));
+}
+
+.switch input:checked + .slider:before {
+  transform: translateX(24px);
+}
+
+.ai-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+/* Responsive Mobile Rules */
+@media(max-width: 768px) {
+  .sidebar { position: fixed; left: 0; top: 0; transform: translateX(-100%); }
+  .sidebar.open { transform: translateX(0); }
+  .sidebar-overlay { position: fixed; display: none; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 35; }
+  .sidebar-overlay.show { display: block; }
+}
+</style>
+</head>
+<body>
+
+<div id="loading-screen">
+  <div class="loader-logo">
+  <img src="logo neXai.jpg"
+       style="
+       width:100%;
+       height:100%;
+       object-fit:cover;
+       border-radius:50%;
+  ">
+</div>
+  <div style="font-weight: 600; color: #fff; letter-spacing: 1px;">SINKRONISASI NEXAI CORE...</div>
+  <div class="loader-spinner"></div>
+</div>
+
+<div class="app-container">
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div style="font-weight: 700; font-size: 1.1rem; color: #fff; display:flex; align-items:center; gap:8px;">
+        <i class="fa-solid fa-atom" style="color:var(--primary);"></i> neXai Space
+      </div>
+      <button class="new-chat-btn" id="new-chat-btn"><i class="fa-solid fa-plus"></i> + Sesi Baru</button>
+    </div>
+    <div class="history-list" id="history-list"></div>
+    <div class="sidebar-footer">
+      <div class="user-avatar" id="footer-avatar">U</div>
+      <div style="flex:1; overflow:hidden;">
+        <div style="font-weight:600; color:#fff;" id="footer-username">Guest User</div>
+        <div style="font-size:0.7rem; color:var(--text-dim);" id="footer-email">Sign in to sync data</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="main-content">
+    <div class="top-bar">
+      <div class="bot-profile">
+        <i class="fa-solid fa-bars menu-toggle" id="menu-toggle"></i>
+        <div class="avatar">
+  <img src="logo neXai.jpg" 
+       style="width:100%;height:100%;border-radius:50%;object-fit:cover;">
+</div>
+        <div class="bot-status">
+          <div class="name">neXai Core <i class="fa-solid fa-atom" style="color:var(--primary); font-size:0.75rem;"></i></div>
+          <div class="status" id="bot-status-text"><i class="fa-solid fa-circle"></i> Online</div>
+        </div>
+      </div>
+      <div class="top-actions">
+        <i class="fa-solid fa-ellipsis-vertical" id="three-dots-btn" title="Pengaturan"></i>
+        <div class="dropdown-menu" id="three-dots-dropdown">
+          <div class="dropdown-item" id="menu-settings"><i class="fa-solid fa-gear"></i> Pengaturan Akun</div>
+          <div class="dropdown-item" id="menu-clear"><i class="fa-solid fa-trash-can"></i> Kosongkan Sesi Ini</div>
+          <div class="dropdown-item logout-item" id="menu-logout" style="display:none;"><i class="fa-solid fa-right-from-bracket"></i> Keluar / Logout</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chat-container" id="chat-container"></div>
+
+    <div class="input-bar">
+      <input type="text" id="chat-input" placeholder="Tanya neXai di sini..." autocomplete="off">
+      <button class="send-btn" id="send-button"><i class="fa-solid fa-paper-plane"></i></button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="auth-modal">
+  <div class="modal-box">
+    <div class="modal-title" id="auth-title"><i class="fa-solid fa-shield-halved" style="color:var(--primary);"></i> Masuk ke neXai</div>
+    <form id="auth-form">
+      <div class="form-group">
+        <label>Username Account</label>
+        <input type="text" id="auth-username" placeholder="Masukkan username lo..." required>
+      </div>
+      <div class="form-group">
+        <label>Kata Sandi</label>
+        <input type="password" id="auth-password" placeholder="••••••••" required>
+      </div>
+      <button type="submit" class="modal-btn" id="auth-submit-btn">Masuk Sekarang</button>
+    </form>
+    <div class="modal-switch" id="auth-switch-text">
+      Belum punya akun? <span id="auth-toggle-mode">Daftar Akun Baru</span>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="settings-modal">
+  <div class="modal-box">
+    <i class="fa-solid fa-xmark close-modal" id="close-settings"></i>
+    <div class="modal-title"><i class="fa-solid fa-sliders" style="color:var(--gold);"></i> Pengaturan Profil</div>
+    <div class="form-group">
+      <label>Ubah Nama Tampilan</label>
+      <input type="text" id="settings-display-name">
+    </div>
+    <div class="form-group">
+  <label>Status Kustomisasi</label>
+  <input type="text" id="settings-custom-status" placeholder="Contoh: Sibuk, Aktif...">
+</div>
+<div class="setting-toggle">
+  <div>
+    <div style="font-weight:600; color:#fff;">Suara AI</div>
+    <div style="font-size:0.75rem; color:var(--text-dim);">Aktif / Nonaktif suara balasan AI</div>
+  </div>
+
+  <label class="switch">
+    <input type="checkbox" id="voice-toggle">
+    <span class="slider"></span>
+  </label>
+</div>
+    <button class="modal-btn" id="save-settings-btn" style="background:linear-gradient(135deg, var(--gold), #ffa500)">Simpan Perubahan</button>
+  </div>
+</div>
+
+<script>
+// DOM Elements
+const chatContainer = document.getElementById('chat-container');
+const chatInput = document.getElementById('chat-input');
+const sendButton = document.getElementById('send-button');
+const botStatusText = document.getElementById('bot-status-text');
+const menuToggle = document.getElementById('menu-toggle');
+const sidebar = document.getElementById('sidebar');
+const sidebarOverlay = document.getElementById('sidebar-overlay');
+const newChatBtn = document.getElementById('new-chat-btn');
+const historyList = document.getElementById('history-list');
+const threeDotsBtn = document.getElementById('three-dots-btn');
+const threeDotsDropdown = document.getElementById('three-dots-dropdown');
+
+// Footer & Auth DOM Elements
+const footerAvatar = document.getElementById('footer-avatar');
+const footerUsername = document.getElementById('footer-username');
+const footerEmail = document.getElementById('footer-email');
+const authModal = document.getElementById('auth-modal');
+const authForm = document.getElementById('auth-form');
+const authTitle = document.getElementById('auth-title');
+const authSubmitBtn = document.getElementById('auth-submit-btn');
+const authToggleMode = document.getElementById('auth-toggle-mode');
+const authSwitchText = document.getElementById('auth-switch-text');
+
+// Settings DOM Elements
+const settingsModal = document.getElementById('settings-modal');
+const menuSettings = document.getElementById('menu-settings');
+const menuClear = document.getElementById('menu-clear');
+const menuLogout = document.getElementById('menu-logout');
+const closeSettings = document.getElementById('close-settings');
+const settingsDisplayName = document.getElementById('settings-display-name');
+const settingsCustomStatus = document.getElementById('settings-custom-status');
+const saveSettingsBtn = document.getElementById('save-settings-btn');
+const voiceToggle = document.getElementById('voice-toggle');
+
+let aiVoiceEnabled = JSON.parse(localStorage.getItem('nexai_voice_enabled') || 'true');
+
+// App State Management
+let currentSessionId = '';
+let chatSessions = {}; 
+let currentUser = null; 
+let isRegisterMode = false;
+
+// Format Clean API HTML Responses
+function formatAIResponse(text) {
+  if (!text) return '';
+  let cleaned = text
+    .replace(/([?.!])([A-Z])/g, '$1 $2')
+    .replace(/atau/g, ' atau ').replace(/guedi/g, ' gue di ').replace(/buatlo/g, ' buat lo ')
+    .replace(/Adayang/g, ' Ada yang ').replace(/laginganggur/g, ' lagi nganggur ')
+    .replace(/bisa saya/g, ' bisa saya ').replace(/spillaja/g, ' spill aja ')
+    .replace(/\s+/g, ' ').trim();
+
+  let sentences = cleaned.split(/(?<=[?.!])\s+/);
+  let formattedHtml = '';
+  sentences.forEach(sentence => {
+    if(sentence.trim().length > 0) {
+      formattedHtml += `<p>${sentence.trim()}</p>`;
+    }
+  });
+  return formattedHtml;
+}
+
+// Typewriter / Streaming Effect
+
+
+function speakAI(text) {
+  if (!aiVoiceEnabled) return;
+
+  if (!window.speechSynthesis) return;
+
+  speechSynthesis.cancel();
+
+  const utterance = new SpeechSynthesisUtterance(
+    text.replace(/[#*_`]/g, '')
+  );
+
+  utterance.lang = 'id-ID';
+  utterance.rate = 1;
+
+  speechSynthesis.speak(utterance);
+}
+function typeWriterEffect(element, fullText, speed = 15) {
+  return new Promise((resolve) => {
+    const formattedHtml = formatAIResponse(fullText);
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = formattedHtml;
+    const paragraphs = tempDiv.querySelectorAll('p');
+    let currentParagraphIndex = 0;
+    element.innerHTML = '';
+    
+    function typeNextParagraph() {
+      if (currentParagraphIndex >= paragraphs.length) { resolve(); return; }
+      const pText = paragraphs[currentParagraphIndex].innerText;
+      const newP = document.createElement('p');
+      element.appendChild(newP);
+      let charIndex = 0;
+      
+      function typeChar() {
+        if (charIndex < pText.length) {
+          newP.textContent += pText.charAt(charIndex);
+          charIndex++;
+          chatContainer.scrollTop = chatContainer.scrollHeight;
+          setTimeout(typeChar, speed);
+        } else {
+          currentParagraphIndex++;
+          setTimeout(typeNextParagraph, speed * 2);
+        }
+      }
+      typeChar();
+    }
+    if(paragraphs.length > 0) typeNextParagraph();
+    else { element.innerHTML = formattedHtml; resolve(); }
+  });
+}
+
+// Session System Logic
+function initSessions() {
+  const savedSessions = localStorage.getItem('nexai_sessions');
+  if (savedSessions) {
+    chatSessions = JSON.parse(savedSessions);
+    const keys = Object.keys(chatSessions);
+    if(keys.length > 0) {
+      currentSessionId = keys[keys.length - 1]; 
+    } else {
+      createNewSession();
+    }
+  } else {
+    createNewSession();
+  }
+  renderSidebarSessions();
+  loadCurrentSessionMessages();
+}
+
+function createNewSession() {
+  const id = 'session_' + Date.now();
+  chatSessions[id] = {
+    title: 'Obrolan Baru ' + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+    messages: [{ text: "Halo bro! Sistem neXai aktif. Ada yang mau kita bahas atau eksekusi hari ini? Gas!", sender: 'ai' }]
+  };
+  currentSessionId = id;
+  saveSessionsToStorage();
+  renderSidebarSessions();
+  loadCurrentSessionMessages();
+}
+
+function saveSessionsToStorage() {
+  localStorage.setItem('nexai_sessions', JSON.stringify(chatSessions));
+}
+
+function renderSidebarSessions() {
+  historyList.innerHTML = '';
+  Object.keys(chatSessions).reverse().forEach(id => {
+    const session = chatSessions[id];
+   const item = document.createElement('div');
+    item.classList.add('history-item');
+    if(id === currentSessionId) item.classList.add('active');
+    item.setAttribute('data-id', id);
+    
+    item.innerHTML = `
+      <i class="fa-regular fa-message"></i>
+      <div class="chat-title">${session.title}</div>
+      <i class="fa-solid fa-trash-can delete-session" title="Hapus Sesi"></i>
+    `;
+    
+    item.addEventListener('click', (e) => {
+      if(e.target.classList.contains('delete-session')) {
+        e.stopPropagation();
+        if(confirm("Hapus seluruh sesi percakapan ini, bro?")) {
+          delete chatSessions[id];
+          saveSessionsToStorage();
+          if(currentSessionId === id) {
+            const remaining = Object.keys(chatSessions);
+            if(remaining.length > 0) {
+              currentSessionId = remaining[remaining.length - 1];
+            } else {
+              createNewSession();
+            }
+          }
+          initSessions();
+        }
+        return;
+      }
+      currentSessionId = id;
+      renderSidebarSessions();
+      loadCurrentSessionMessages();
+      sidebar.classList.remove('open');
+      sidebarOverlay.classList.remove('show');
+    });
+    
+    historyList.appendChild(item);
+  });
+}
+
+function loadCurrentSessionMessages() {
+  chatContainer.innerHTML = '';
+  const current = chatSessions[currentSessionId];
+  if(current && current.messages) {
+    current.messages.forEach((msg, idx) => {
+      const isWelcomeText = idx === 0 && current.messages.length === 1;
+      renderMessageBubble(msg.text, msg.sender, msg.sender === 'ai', isWelcomeText);
+    });
+  }
+  chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+function renderMessageBubble(text, sender, isHTML = false, isStreaming = false) {
+  const messageDiv = document.createElement('div');
+  messageDiv.classList.add('message', sender);
+  const bubbleDiv = document.createElement('div');
+  bubbleDiv.classList.add('bubble');
+  messageDiv.appendChild(bubbleDiv);
+  chatContainer.appendChild(messageDiv);
+
+  if (isHTML) {
+    if (isStreaming) {
+      chatInput.disabled = true; sendButton.disabled = true;
+      typeWriterEffect(bubbleDiv, text, 15).then(() => {
+        chatInput.disabled = false; sendButton.disabled = false; chatInput.focus();
+      });
+    } else {
+      bubbleDiv.innerHTML = formatAIResponse(text);
+    }
+  } else {
+    bubbleDiv.textContent = text;
+  }
+}
+
+// Ambil riwayat chat sebagai teks memori/konteks agar AI ingat percakapan sebelumnya
+function makeContextMemory() {
+  const current = chatSessions[currentSessionId];
+  if (!current || !current.messages || current.messages.length <= 1) return "";
+  
+  // Mengambil maksimal 6 pesan terakhir untuk di-inject agar memori terus berjalan runtut
+  const recentMessages = current.messages.slice(-6);
+  let memoryPrompt = " [Memori Percakapan Sebelumnya: ";
+  recentMessages.forEach(msg => {
+    const label = msg.sender === 'user' ? 'User' : 'neXai';
+    memoryPrompt += `${label}: ${msg.text}. `;
+  });
+  memoryPrompt += "]";
+  return memoryPrompt;
+}
+
+// Network / Bintang API Core Connection
+async function sendMessage() {
+  const text = chatInput.value.trim();
+  if (!text || chatInput.disabled) return;
+
+  renderMessageBubble(text, 'user', false, false);
+  chatSessions[currentSessionId].messages.push({ text, sender: 'user' });
+  
+  if(chatSessions[currentSessionId].messages.length === 2) {
+    chatSessions[currentSessionId].title = text.substring(0, 22) + (text.length > 22 ? '...' : '');
+    renderSidebarSessions();
+  }
+
+  saveSessionsToStorage();
+  chatInput.value = '';
+  chatContainer.scrollTop = chatContainer.scrollHeight;
+
+  const typingIndicator = appendTypingIndicator();
+  botStatusText.innerHTML = '<i class="fa-solid fa-circle" style="color: #ffd700;"></i> Memproses...';
+
+  // Inject Ingatan kontekstual ke dalam prompt system
+  const historyContext = makeContextMemory();
+  const systemPrompt = `kamu adalah neXai, asisten AI premium yang ramah, asik, pinter coding, dan panggil user dengan sebutan bro.${historyContext}`;
+
+  try {
+    const apiUrl = `https://bintangapi.full.diskon.cloud/api/aichat/openai/?text=${encodeURIComponent(text)}&prompt=${encodeURIComponent(systemPrompt)}`;
+    const response = await fetch(apiUrl);
+    const data = await response.json();
+    typingIndicator.remove();
+
+    if (data.status && data.result) {
+      renderMessageBubble(data.result, 'ai', true, true);
+      chatSessions[currentSessionId].messages.push({ text: data.result, sender: 'ai' });
+      saveSessionsToStorage();
+    } else {
+      renderMessageBubble("neXai gagal mendapatkan data dari core API.", 'ai', false, false);
+    }
+  } catch (error) {
+    console.error(error);
+    typingIndicator.remove();
+    renderMessageBubble("Koneksi terputus. Gagal sinkronisasi dengan neXai server.", 'ai', false, false);
+  }
+
+  botStatusText.innerHTML = '<i class="fa-solid fa-circle" style="color: #00ff88;"></i> Online';
+}
+
+function appendTypingIndicator() {
+  const messageDiv = document.createElement('div');
+  messageDiv.classList.add('message', 'ai');
+  const bubbleDiv = document.createElement('div');
+  bubbleDiv.classList.add('bubble');
+  const typingDots = document.createElement('div');
+  typingDots.classList.add('typing-dots');
+  typingDots.innerHTML = '<span></span><span></span><span></span>';
+  bubbleDiv.appendChild(typingDots);
+  messageDiv.appendChild(bubbleDiv);
+  chatContainer.appendChild(messageDiv);
+  chatContainer.scrollTop = chatContainer.scrollHeight;
+  return messageDiv;
+}
+
+// User Authentication Verification (Full LocalStorage agar login permanen)
+function checkUserAuth() {
+  const savedUser = localStorage.getItem('nexai_logged_user');
+  if(savedUser) {
+    currentUser = JSON.parse(savedUser);
+    updateUserInterface();
+    initSessions();
+  } else {
+    authModal.classList.add('active');
+  }
+}
+
+function updateUserInterface() {
+  if (currentUser) {
+    footerUsername.textContent = currentUser.username;
+    footerEmail.textContent = currentUser.username + "@nexai.space";
+    footerAvatar.textContent = footerUsername.textContent.substring(0, 2).toUpperCase();
+    menuLogout.style.display = 'flex';
+  } else {
+    footerUsername.textContent = "Guest User";
+    footerEmail.textContent = "Sign in to sync data";
+    footerAvatar.textContent = "G";
+    menuLogout.style.display = 'none';
+  }
+}
+
+// Interaction Listeners
+menuToggle.addEventListener('click', () => {
+  sidebar.classList.toggle('open');
+  sidebarOverlay.classList.toggle('show');
+});
+
+sidebarOverlay.addEventListener('click', () => {
+  sidebar.classList.remove('open');
+  sidebarOverlay.classList.remove('show');
+});
+
+newChatBtn.addEventListener('click', () => {
+  createNewSession();
+  if(window.innerWidth <= 768) {
+    sidebar.classList.remove('open');
+    sidebarOverlay.classList.remove('show');
+  }
+});
+
+threeDotsBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  threeDotsDropdown.classList.toggle('show');
+});
+
+document.addEventListener('click', () => {
+  threeDotsDropdown.classList.remove('show');
+});
+
+menuClear.addEventListener('click', () => {
+  if (confirm("Kosongkan semua percakapan di dalam sesi ini?")) {
+    chatSessions[currentSessionId].messages = [{ text: "Sesi dibersihkan. Ada yang bisa neXai bantu lagi, bro?", sender: 'ai' }];
+    saveSessionsToStorage();
+    loadCurrentSessionMessages();
+  }
+});
+
+menuSettings.addEventListener('click', () => {
+  settingsDisplayName.value = footerUsername.textContent;
+  voiceToggle.checked = aiVoiceEnabled;
+  settingsModal.classList.add('active');
+});
+
+closeSettings.addEventListener('click', () => {
+  settingsModal.classList.remove('active');
+});
+
+saveSettingsBtn.addEventListener('click', () => {
+  if(settingsDisplayName.value.trim()) {
+    if(!currentUser) currentUser = { username: 'Guest' };
+
+    currentUser.username = settingsDisplayName.value.trim();
+
+    localStorage.setItem('nexai_logged_user', JSON.stringify(currentUser));
+
+    if(settingsCustomStatus.value.trim()) {
+      botStatusText.innerHTML = `<i class="fa-solid fa-circle" style="color: #00ff88;"></i> ${settingsCustomStatus.value.trim()}`;
+    }
+
+    aiVoiceEnabled = voiceToggle.checked;
+    localStorage.setItem('nexai_voice_enabled', JSON.stringify(aiVoiceEnabled));
+
+    const file = settingsAiAvatar.files[0];
+
+    if(file) {
+      const reader = new FileReader();
+
+      reader.onload = function(e) {
+        localStorage.setItem('nexai_ai_avatar', e.target.result);
+        applySavedAvatar();
+      }
+
+      reader.readAsDataURL(file);
+    }
+
+    updateUserInterface();
+    settingsModal.classList.remove('active');
+  }
+});
+
+authToggleMode.addEventListener('click', () => {
+  isRegisterMode = !isRegisterMode;
+  if(isRegisterMode) {
+    authTitle.innerHTML = '<i class="fa-solid fa-user-plus" style="color:var(--primary);"></i> Daftar Akun neXai';
+    authSubmitBtn.textContent = 'Daftar Sekarang';
+    authSwitchText.innerHTML = 'Sudah punya akun? <span id="auth-toggle-mode">Masuk Di Sini</span>';
+  } else {
+    authTitle.innerHTML = '<i class="fa-solid fa-shield-halved" style="color:var(--primary);"></i> Masuk ke neXai';
+    authSubmitBtn.textContent = 'Masuk Sekarang';
+    authSwitchText.innerHTML = 'Belum punya akun? <span id="auth-toggle-mode">Daftar Akun Baru</span>';
+  }
+  document.getElementById('auth-toggle-mode').addEventListener('click', () => authToggleMode.click());
+});
+
+authForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const username = document.getElementById('auth-username').value.trim();
+  const password = document.getElementById('auth-password').value;
+
+  if(isRegisterMode) {
+    const userData = { username, password };
+    localStorage.setItem('user_db_' + username, JSON.stringify(userData));
+    alert('Akun berhasil dibuat, bro! Silakan masuk.');
+    authToggleMode.click();
+  } else {
+    const savedUserData = localStorage.getItem('user_db_' + username);
+    if(savedUserData) {
+      const parsedUser = JSON.parse(savedUserData);
+      if(parsedUser.password === password) {
+        localStorage.setItem('nexai_logged_user', JSON.stringify(parsedUser));
+        currentUser = parsedUser;
+        updateUserInterface();
+        authModal.classList.remove('active');
+        authForm.reset();
+        initSessions();
+      } else {
+        alert('Password salah, bro! Coba ingat-ingat lagi.');
+      }
+    } else {
+      alert('Akun belum terdaftar, bro!');
+    }
+  }
+});
+
+menuLogout.addEventListener('click', () => {
+  if(confirm("Yakin mau logout dari akun lo, bro?")) {
+    localStorage.removeItem('nexai_logged_user');
+    currentUser = null;
+    updateUserInterface();
+    authModal.classList.add('active');
+  }
+});
+
+sendButton.addEventListener('click', sendMessage);
+chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
+
+speechSynthesis.getVoices();
+window.onload = () => {
+
+  if ('speechSynthesis' in window) {
+    speechSynthesis.getVoices();
+  }
+  // Simulasi Animasi Loading Premium Splash Screen saat masuk web
+  setTimeout(() => {
+    const loader = document.getElementById('loading-screen');
+    loader.classList.add('fade-out');
+    setTimeout(() => loader.remove(), 500);
+  }, 1800);
+
+  checkUserAuth();
+};
+</script>
+</body>
+</html>
